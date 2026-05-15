@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Albion Farming Calculator — Asia/East</title>
+<meta name="description" content="Calculator lợi nhuận trồng trọt Albion Online server Asia/East.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-content">
+    <div class="logo-group">
+      <div class="logo-icon">🌾</div>
+      <div>
+        <h1>Albion Farming Calculator</h1>
+        <span class="server-badge" id="serverBadge">🌏 Asia East</span>
+      </div>
+    </div>
+    <div class="header-profit">
+      <div class="header-profit-label">Profit / ngày</div>
+      <div class="header-profit-value" id="headerProfit">0</div>
+      <div class="header-profit-sub">silver</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="themeBtn" title="Dark/Light mode">🌙</button>
+      <button class="btn btn-ghost" onclick="exportResults()"><span class="btn-icon">📋</span> Export</button>
+      <select id="apiServer" onchange="onServerChange()" title="Chọn API server" style="padding:.35rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer">
+        <option value="east">🌏 Asia East</option>
+        <option value="west">🌎 Americas West</option>
+        <option value="europe">🌍 Europe</option>
+      </select>
+      <select id="sellMode" onchange="onSellModeChange()" title="Kiểu bán" style="padding:.35rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer">
+        <option value="sell">📋 Sell Order</option>
+        <option value="quick">💨 Quick Sell</option>
+      </select>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:.2rem">
+        <button class="btn btn-accent" id="btnFetchPrices" onclick="fetchPrices()">
+          <span class="btn-icon" id="fetchIcon">⟳</span>
+          <span id="fetchText">Cập nhật giá</span>
+        </button>
+        <span class="last-fetch" id="lastFetch">Chưa fetch</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div id="toast" class="toast"></div>
+
+<main class="container">
+  <!-- SUMMARY -->
+  <section class="summary-grid">
+    <div class="card summary-card" data-accent="gold">
+      <div class="card-icon">🏠</div>
+      <div class="card-body"><div class="card-label">Tổng Ruộng</div><div class="card-value" id="totalFarms">0</div><div class="card-sub">farms</div></div>
+    </div>
+    <div class="card summary-card" data-accent="gold">
+      <div class="card-icon">💰</div>
+      <div class="card-body"><div class="card-label">Ước tính DT/ngày</div><div class="card-value gold" id="totalRevenue">0</div><div class="card-sub">silver (theo bảng giá)</div></div>
+    </div>
+    <div class="card summary-card" data-accent="green" style="border:1px solid rgba(74,222,128,.3)">
+      <div class="card-icon">📊</div>
+      <div class="card-body"><div class="card-label">Profit thực tế/ngày</div><div class="card-value green" id="avgDailyProfit">0</div><div class="card-sub" id="avgDailyProfitSub">từ lịch sử</div></div>
+    </div>
+    <div class="card summary-card" data-accent="green">
+      <div class="card-icon">📅</div>
+      <div class="card-body"><div class="card-label">Profit/tháng (thực tế)</div><div class="card-value green" id="monthlyProfit">0</div><div class="card-sub">silver</div></div>
+    </div>
+    <div class="card summary-card" data-accent="cyan">
+      <div class="card-icon">💧</div>
+      <div class="card-body"><div class="card-label">Tiết kiệm Seed</div><div class="card-value cyan" id="totalSeedSaving">0</div><div class="card-sub">silver/ngày</div></div>
+    </div>
+  </section>
+
+  <!-- PREMIUM ROI + Progress -->
+  <section class="card premium-card">
+    <h2 class="section-title">👑 Hoàn vốn Premium</h2>
+    <div class="premium-grid">
+      <div class="input-group"><label>Giá Premium</label><input type="number" id="premiumPrice" value="46000000" onchange="recalcAll()"></div>
+      <div class="input-group"><label>Ngày còn lại</label><input type="number" id="premiumDays" value="27" onchange="recalcAll()"></div>
+      <div class="input-group" style="justify-content:center"><label style="cursor:pointer;display:flex;align-items:center;gap:.4rem"><input type="checkbox" id="hasPremium" checked onchange="recalcAll()" style="width:auto;accent-color:var(--accent)"> Có Premium</label></div>
+      <div class="premium-result"><div class="card-label">Ngày hoàn vốn</div><div class="card-value" id="roiDays">∞</div></div>
+      <div class="premium-result"><div class="card-label">Trạng thái</div><div id="roiBadge" class="badge badge-red">—</div></div>
+    </div>
+    <div class="premium-progress-wrap">
+      <div class="premium-progress-label">
+        <span>Tích lũy: <strong id="premAccum">0</strong></span>
+        <span>Mục tiêu: <strong id="premTarget">46M</strong></span>
+      </div>
+      <div class="premium-progress-bar"><div class="premium-progress-fill" id="premBar" style="width:0%"></div></div>
+      <div class="premium-progress-pct" id="premPct">0%</div>
+    </div>
+  </section>
+
+  <!-- TABS -->
+  <div class="tabs" id="tabBar">
+    <button class="tab tab-primary active" onclick="switchTab('islands',this)">🏝️ Đảo</button>
+    <button class="tab tab-primary" onclick="switchTab('history',this)">📜 Lịch sử</button>
+    <button class="tab tab-secondary" onclick="switchTab('prices',this)">💰 Bảng Giá</button>
+    <button class="tab tab-secondary" onclick="switchTab('watering',this)">💧 Tưới cây</button>
+    <button class="tab tab-secondary" onclick="switchTab('compare',this)">⚖️ So sánh</button>
+    <button class="tab tab-secondary" onclick="switchTab('optimize',this)">🧠 Tối ưu</button>
+    <button class="tab tab-secondary" onclick="switchTab('spec',this)">📖 LP Spec</button>
+    <button class="tab tab-secondary" onclick="switchTab('chart',this)">📊 Biểu đồ</button>
+    <button class="tab tab-more" onclick="toggleTabMore()" id="tabMoreBtn">⋯</button>
+  </div>
+
+  <!-- TAB: PRICES -->
+  <section class="tab-content" id="tab-prices">
+    <div class="card">
+      <h2 class="section-title">Giá bán Crop theo thành phố</h2>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>Crop</th><th>Giá Seed</th><th>Yield/ô</th><th>LP/ô</th>
+          <th>Martlock</th><th>Lymhurst</th><th>Bridgewatch</th><th>Fort Sterling</th><th>Thetford</th><th>Caerleon</th>
+        </tr></thead><tbody id="priceBody"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: ISLANDS -->
+  <section class="tab-content active" id="tab-islands">
+    <div class="card">
+      <div class="section-header">
+        <h2 class="section-title">🏝️ Danh sách Đảo</h2>
+        <button class="btn btn-accent btn-sm" onclick="addIsland()">+ Thêm Đảo</button>
+      </div>
+      <div id="noIslands" class="empty-state"><span>🏝️</span><p>Chưa có đảo nào.</p></div>
+      <div class="table-wrap" id="islandTableWrap">
+        <table><thead><tr>
+          <th></th><th>Tên</th><th>TP</th><th>Cây</th>
+          <th class="sortable" onclick="sortIslands('farms')">Ruộng⇅</th>
+          <th class="sortable" onclick="sortIslands('output')">SL⇅</th>
+          <th class="sortable" onclick="sortIslands('price')">Giá⇅</th>
+          <th class="sortable" onclick="sortIslands('revenue')">DT⇅</th>
+          <th class="sortable" onclick="sortIslands('seed')">Seed⇅</th>
+          <th class="sortable" onclick="sortIslands('rent')">Thuê⇅</th>
+          <th class="sortable" onclick="sortIslands('profit')">Profit⇅</th>
+          <th></th>
+        </tr></thead><tbody id="islandBody"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: WATERING -->
+  <section class="tab-content" id="tab-watering">
+    <div class="card">
+      <h2 class="section-title">💧 Tưới cây — Tiết kiệm Seed</h2>
+      <div class="watering-grid">
+        <div class="input-group"><label>LP mỗi ngày</label><input type="number" id="lpPerDay" value="10000" onchange="recalcAll()"></div>
+        <div class="watering-results" id="wateringResults"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: COMPARE -->
+  <section class="tab-content" id="tab-compare">
+    <div class="card">
+      <h2 class="section-title">⚖️ So sánh Profit 7 loại cây</h2>
+      <div class="compare-inputs">
+        <div class="input-group"><label>Số ruộng</label><input type="number" id="cmpFarms" value="5" min="1" onchange="runCompare()"></div>
+        <div class="input-group"><label>Thành phố</label>
+          <select id="cmpCity" onchange="runCompare()">
+            <option>Martlock</option><option>Lymhurst</option><option>Bridgewatch</option>
+            <option>Fort Sterling</option><option>Thetford</option><option>Caerleon</option>
+          </select>
+        </div>
+      </div>
+      <div class="compare-grid" id="compareGrid"></div>
+    </div>
+  </section>
+
+  <!-- TAB: OPTIMIZE -->
+  <section class="tab-content" id="tab-optimize">
+    <div class="card">
+      <h2 class="section-title">🧠 Tối ưu — Gợi ý cây tốt nhất cho từng đảo</h2>
+      <p class="text-dim" style="margin-bottom:1rem;font-size:.82rem">Dựa trên giá hiện tại, app sẽ gợi ý nên trồng cây gì ở mỗi đảo để maximize tổng profit.</p>
+      <button class="btn btn-accent" onclick="runOptimize()">🚀 Tối ưu hoá</button>
+      <div id="optimizeResults" style="margin-top:1rem"></div>
+    </div>
+  </section>
+
+  <!-- TAB: SPEC -->
+  <section class="tab-content" id="tab-spec">
+    <div class="card">
+      <h2 class="section-title">📖 LP Spec — So sánh tiết kiệm Seed</h2>
+      <div class="spec-inputs">
+        <div class="input-group"><label>LP Spec hiện tại</label><input type="number" id="specCurrent" value="50" min="0" max="125" onchange="runSpec()"></div>
+        <div class="input-group"><label>LP Spec max</label><input type="number" id="specMax" value="125" min="0" max="125" onchange="runSpec()"></div>
+        <div class="input-group"><label>Số ruộng tính</label><input type="number" id="specFarms" value="10" min="1" onchange="runSpec()"></div>
+      </div>
+      <div id="specResults" style="margin-top:1rem"></div>
+    </div>
+  </section>
+
+  <!-- TAB: HISTORY -->
+  <section class="tab-content" id="tab-history">
+    <div class="card">
+      <div class="section-header">
+        <h2 class="section-title">📜 Profit History</h2>
+        <div style="display:flex;gap:.4rem">
+          <button class="btn btn-ghost btn-sm" onclick="clearHistory()">🗑️ Xoá tất cả</button>
+        </div>
+      </div>
+
+      <!-- FORM GHI THU NHẬP -->
+      <div class="card" style="background:var(--bg);border:1px solid var(--border);margin-bottom:1rem">
+        <div class="section-header" style="margin-bottom:.5rem">
+          <h3 class="section-title" style="font-size:.85rem">📝 Ghi thu nhập hôm nay</h3>
+        </div>
+        <div id="dailyEntryForm"></div>
+        <div id="editingDateLabel" style="display:none;padding:.4rem .6rem;margin-top:.4rem;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:var(--radius-sm);font-size:.75rem;color:var(--accent)">
+          ✏️ Đang sửa ngày: <strong id="editingDateText"></strong>
+          <button class="btn btn-ghost" style="padding:1px 6px;font-size:.65rem;margin-left:.5rem" onclick="cancelEditHistory()">✕ Hủy</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--border)">
+          <div>
+            <span style="color:var(--text-dim);font-size:.75rem">Tổng: </span>
+            <strong id="dailyEntryTotal" style="font-family:var(--mono);color:var(--green);font-size:1.1rem">0</strong>
+          </div>
+          <button class="btn btn-accent btn-sm" id="btnSaveEntry" onclick="saveDailyEntry()">💾 Lưu ngày hôm nay</button>
+        </div>
+      </div>
+
+      <!-- BỘ LỌC -->
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap">
+        <span style="font-size:.75rem;color:var(--text-dim)">Lọc:</span>
+        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(7)" id="hf7">7 ngày</button>
+        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(30)" id="hf30">30 ngày</button>
+        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(0)" id="hf0">Tất cả</button>
+        <span style="font-size:.7rem;color:var(--text-dim);margin-left:auto" id="historyFilterInfo"></span>
+      </div>
+
+      <!-- CHART -->
+      <div class="chart-container"><canvas id="historyChart"></canvas></div>
+
+      <!-- BẢNG LỊCH SỬ -->
+      <div id="noHistory" class="empty-state" style="display:none"><span>📜</span><p>Chưa có lịch sử nào.</p></div>
+      <div class="table-wrap" id="historyTableWrap" style="margin-top:1rem">
+        <table><thead><tr>
+          <th>Ngày</th><th>Chi tiết</th><th>Profit/ngày</th><th>Tích luỹ</th><th></th>
+        </tr></thead>
+        <tbody id="historyBody"></tbody></table>
+      </div>
+
+      <!-- BÁO CÁO TIỀN THUÊ -->
+      <div class="card" style="margin-top:1.5rem">
+        <div class="section-header">
+          <h2 class="section-title">💸 Báo cáo Tiền Thuê</h2>
+          <div style="display:flex;gap:.4rem;align-items:center">
+            <select id="rentReportPeriod" onchange="renderRentReport()" style="padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem">
+              <option value="month">Tháng này</option>
+              <option value="30">30 ngày</option>
+              <option value="7">7 ngày</option>
+              <option value="0">Tất cả</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="copyRentReport()">📋 Copy</button>
+          </div>
+        </div>
+        <div id="rentReportInfo" style="font-size:.7rem;color:var(--text-dim);margin-bottom:.5rem"></div>
+        <div id="noRent" class="empty-state" style="display:none"><span>🏠</span><p>Không có dữ liệu thuê.</p></div>
+        <div class="table-wrap" id="rentTableWrap" style="display:none">
+          <table>
+            <thead><tr>
+              <th>Người thuê</th><th>Đảo</th><th>Ruộng</th><th>Doanh thu</th><th>Tiền thuê</th><th>%</th><th>TB/ngày</th>
+            </tr></thead>
+            <tbody id="rentBody"></tbody>
+            <tfoot id="rentFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: CHART -->
+  <section class="tab-content" id="tab-chart">
+    <div class="card">
+      <h2 class="section-title">📊 So sánh Profit theo thành phố</h2>
+      <div class="chart-container"><canvas id="profitChart"></canvas></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <p>Albion Farming Calculator · <a href="https://www.albion-online-data.com/" target="_blank">Albion Online Data Project</a> · Asia/East</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

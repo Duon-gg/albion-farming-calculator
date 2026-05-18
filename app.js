@@ -1,11 +1,12 @@
 const CROPS=[
-{id:'carrot',name:'Carrot',tier:'T1',apiItem:'T1_CARROT',apiSeed:'T1_CARROT_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥕'},
+{id:'carrot',name:'Carrot',tier:'T1',apiItem:'T1_CARROT',apiSeed:'T1_CARROT_SEED',yield:9,lp:134,waterBonus:2,emoji:'🥕'},
 {id:'bean',name:'Bean',tier:'T2',apiItem:'T2_BEAN',apiSeed:'T2_BEAN_SEED',yield:9,lp:179,waterBonus:2,emoji:'🫘'},
 {id:'wheat',name:'Wheat',tier:'T3',apiItem:'T3_WHEAT',apiSeed:'T3_WHEAT_SEED',yield:9,lp:179,waterBonus:2,emoji:'🌾'},
-{id:'potato',name:'Potato',tier:'T4',apiItem:'T4_POTATO',apiSeed:'T4_POTATO_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥔'},
+{id:'turnip',name:'Turnip',tier:'T4',apiItem:'T4_TURNIP',apiSeed:'T4_TURNIP_SEED',yield:9,lp:179,waterBonus:2,emoji:'🫛'},
 {id:'cabbage',name:'Cabbage',tier:'T5',apiItem:'T5_CABBAGE',apiSeed:'T5_CABBAGE_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥬'},
-{id:'corn',name:'Corn',tier:'T6',apiItem:'T6_CORN',apiSeed:'T6_CORN_SEED',yield:9,lp:179,waterBonus:2,emoji:'🌽'},
-{id:'pumpkin',name:'Pumpkin',tier:'T7',apiItem:'T7_PUMPKIN',apiSeed:'T7_PUMPKIN_SEED',yield:10,lp:142,waterBonus:0.1333,emoji:'🎃'}];
+{id:'potato',name:'Potato',tier:'T6',apiItem:'T6_POTATO',apiSeed:'T6_POTATO_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥔'},
+{id:'corn',name:'Corn',tier:'T7',apiItem:'T7_CORN',apiSeed:'T7_CORN_SEED',yield:9,lp:179,waterBonus:2,emoji:'🌽'},
+{id:'pumpkin',name:'Pumpkin',tier:'T8',apiItem:'T8_PUMPKIN',apiSeed:'T8_PUMPKIN_SEED',yield:10,lp:142,waterBonus:0.1333,emoji:'🎃'}];
 const CITIES=['Martlock','Lymhurst','Bridgewatch','Fort Sterling','Thetford','Caerleon'];
 // API dùng underscore cho Fort_Sterling
 const API_CITIES=['Martlock','Lymhurst','Bridgewatch','Fort_Sterling','Thetford','Caerleon'];
@@ -16,7 +17,17 @@ let prices={},islands=[],sortField='profit',sortDir=-1,profitChart=null,historyC
 function getApiBase(){const sel=document.getElementById('apiServer');return API_SERVERS[sel?sel.value:'east']}
 function onServerChange(){const sel=document.getElementById('apiServer');localStorage.setItem('albion_server',sel.value);document.getElementById('serverBadge').textContent=SERVER_LABELS[sel.value]||sel.value;showToast(`Server: ${SERVER_LABELS[sel.value]}. Bấm Cập nhật giá để fetch.`,'info')}
 
-function init(){loadData();renderPriceTable();renderIslands();recalcAll();renderHistory();
+// Migration: crop ID cũ → mới (v1 dùng sai tier mapping)
+function migrateOldCrops(){
+if(localStorage.getItem('albion_crop_migrated'))return;
+const s=localStorage.getItem('albion_islands');if(!s)return;
+const islands=JSON.parse(s);
+const map={potato:'turnip',corn:'potato',pumpkin:'corn'};
+const migrated=islands.map(isl=>({...isl,crop:map[isl.crop]||isl.crop}));
+localStorage.setItem('albion_islands',JSON.stringify(migrated));
+localStorage.setItem('albion_crop_migrated','1');
+}
+function init(){migrateOldCrops();loadData();renderPriceTable();renderIslands();recalcAll();renderHistory();
 if(localStorage.getItem('albion_theme')==='light'){document.documentElement.dataset.theme='light';document.getElementById('themeBtn').textContent='☀️';}
 const lf=localStorage.getItem('albion_lastFetch');if(lf)document.getElementById('lastFetch').textContent='⏱ '+lf;
 const sv=localStorage.getItem('albion_server')||'east';const sel=document.getElementById('apiServer');if(sel)sel.value=sv;
@@ -142,6 +153,47 @@ showToast(msg,'success')}catch(e){showToast(`✕ ${e.message}`,'error')}finally{
 // === EXPORT ===
 function exportResults(){if(!islands.length){showToast('Chưa có đảo','error');return}let tR=0,tS=0,tP=0;const d=new Date(),dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0'),yyyy=d.getFullYear();const sv=document.getElementById('apiServer').value;const lines=['=== Albion Farming Report ===',`Ngày: ${dd}/${mm}/${yyyy}`,`Server: ${SERVER_LABELS[sv]||sv}`,''];islands.forEach(isl=>{const r=calcIsland(isl);tR+=r.revenue;tS+=r.seedCost;tP+=r.profit;lines.push(`▸ ${isl.name} | ${isl.city} | ${r.crop.emoji} ${r.crop.name}`);lines.push(`  Ruộng: ${isl.farms} | SL: ${fmt(r.totalCrops)} | DT: ${fmt(r.revenue)} | Seed: ${fmt(r.seedCost)} | Profit: ${fmt(r.profit)}`);lines.push('')});lines.push('========================');lines.push(`Tổng ruộng: ${islands.reduce((a,i)=>a+i.farms,0)}`);lines.push(`Profit/ngày: ${fmt(tP)} silver`);lines.push(`Profit/tháng: ${fmt(tP*30)} silver`);lines.push('========================');const text=lines.join('\n');navigator.clipboard.writeText(text).then(()=>showToast('📋 Copied!','success')).catch(()=>{const b=new Blob([text],{type:'text/plain'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='albion-report.txt';a.click();URL.revokeObjectURL(u);showToast('📥 Downloaded!','info')})}
 
+// === BACKUP / RESTORE ===
+function backupData(){
+const data={
+albion_islands:localStorage.getItem('albion_islands'),
+albion_prices:localStorage.getItem('albion_prices'),
+albion_history:localStorage.getItem('albion_history'),
+albion_server:localStorage.getItem('albion_server'),
+albion_sellMode:localStorage.getItem('albion_sellMode'),
+albion_theme:localStorage.getItem('albion_theme'),
+albion_lastFetch:localStorage.getItem('albion_lastFetch'),
+_exportDate:new Date().toISOString()
+};
+const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+const url=URL.createObjectURL(blob);
+const a=document.createElement('a');
+a.href=url;a.download=`albion-backup-${new Date().toISOString().slice(0,10)}.json`;
+a.click();URL.revokeObjectURL(url);
+showToast('💾 Đã tải backup!','success');
+}
+function restoreData(evt){
+const file=evt.target.files[0];if(!file)return;
+const reader=new FileReader();
+reader.onload=function(e){
+try{
+const data=JSON.parse(e.target.result);
+// Validate
+if(!data.albion_islands&&!data.albion_history){showToast('File không hợp lệ','error');return}
+const histCount=data.albion_history?JSON.parse(data.albion_history).length:0;
+const islCount=data.albion_islands?JSON.parse(data.albion_islands).length:0;
+if(!confirm(`Khôi phục: ${islCount} đảo, ${histCount} ngày lịch sử?\nDữ liệu hiện tại sẽ bị ghi đè.`))return;
+Object.entries(data).forEach(([k,v])=>{if(k.startsWith('albion_')&&v!==null)localStorage.setItem(k,v)});
+loadData();renderPriceTable();renderIslands();recalcAll();renderHistory();
+const sv=localStorage.getItem('albion_server')||'east';
+const sel=document.getElementById('apiServer');if(sel)sel.value=sv;
+showToast(`✔ Đã khôi phục ${islCount} đảo + ${histCount} ngày`,'success');
+}catch(er){showToast('Lỗi đọc file: '+er.message,'error')}
+};
+reader.readAsText(file);
+evt.target.value='';
+}
+
 // === COMPARE ===
 function runCompare(){const farms=parseInt(document.getElementById('cmpFarms').value)||5,city=document.getElementById('cmpCity').value,g=document.getElementById('compareGrid');g.innerHTML='';const results=CROPS.map(c=>({...c,...calcCropProfit(c.id,city,farms)}));const best=Math.max(...results.map(r=>r.profit));results.sort((a,b)=>b.profit-a.profit);results.forEach(r=>{const d=document.createElement('div');d.className=`compare-card${r.profit===best&&best>0?' best':''}`;d.innerHTML=`<div class="cc-emoji">${r.emoji}</div><div class="cc-name">${r.tier} ${r.name}</div><div class="cc-profit ${r.profit>=0?'profit-positive':'profit-negative'}">${fmtC(r.profit)}</div><div class="cc-detail">DT: ${fmtC(r.revenue)} · Seed: ${fmtC(r.seedCost)}</div>`;g.appendChild(d)})}
 
@@ -181,7 +233,7 @@ let html=`<div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap;
 <span style="font-size:.65rem;color:var(--text-dim)" id="entryCount"></span>
 </div>
 <div class="table-wrap"><table><thead><tr>
-<th></th><th>Tên</th><th>TP</th><th>Cây</th><th>Ruộng</th><th>Thuê</th><th>Silver bán</th><th>Phí thuê</th>
+<th></th><th>Tên</th><th>TP</th><th>Cây</th><th>Ruộng</th><th>Thuê</th><th>Silver bán</th><th>Giá hạt</th><th>Phí thuê</th><th title="Đã trồng lại">🌱</th>
 </tr></thead><tbody id="entryRows"></tbody></table></div>`;
 div.innerHTML=html;
 rerenderEntryRows();
@@ -212,6 +264,8 @@ const totalPlots=islands.reduce((s,isl)=>s+isl.farms*9,0);
 islands.forEach((isl,i)=>{
 const c=CROPS.find(x=>x.id===isl.crop);
 const savedVal=getDailyEntryVal(i);
+const savedSeed=getEntrySeedVal(i,isl.crop);
+const savedPlanted=sessionStorage.getItem(`albion_planted_${i}`)==='1';
 const matchName=!ft||isl.name.toLowerCase().includes(ft)||isl.city.toLowerCase().includes(ft);
 const matchCity=!entryFilterCity||isl.city===entryFilterCity;
 const matchStatus=!entryFilterStatus||(entryFilterStatus==='filled'?savedVal>0:savedVal===0);
@@ -222,24 +276,25 @@ const tr=document.createElement('tr');
 tr.className='entry-row';
 if(!visible)tr.style.display='none';
 tr.dataset.idx=i;
-tr.innerHTML=`<td class="drag-handle">☰</td><td><strong>${isl.name}</strong></td><td><span class="city-badge" data-city="${isl.city}">${isl.city}</span></td><td>${c.emoji}${c.tier}</td><td>${isl.farms}</td><td>${rentTd}</td><td><input type="number" id="entry_${i}" value="${savedVal}" min="0" placeholder="0" onchange="updateDailyTotal()" style="width:110px;padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.8rem;text-align:right"></td><td id="rentCalc_${i}" style="font-family:var(--mono);font-size:.75rem;white-space:nowrap">—</td>`;
+const dimRow=savedVal===0&&savedSeed===0;
+if(dimRow)tr.style.opacity='.45';
+tr.innerHTML=`<td class="drag-handle">☰</td><td><strong>${isl.name}</strong></td><td><span class="city-badge" data-city="${isl.city}">${isl.city}</span></td><td>${c.emoji}${c.tier}</td><td>${isl.farms} <span style="font-size:.6rem;color:var(--text-dim)">(${isl.farms*9} ô)</span></td><td>${rentTd}</td><td><input type="number" id="entry_${i}" value="${savedVal}" min="0" placeholder="0" onchange="updateDailyTotal()" style="width:110px;padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.8rem;text-align:right"></td><td><input type="number" id="seed_${i}" value="${savedSeed}" min="0" placeholder="0" onchange="updateDailyTotal()" style="width:80px;padding:.3rem .4rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid rgba(248,113,113,.2);color:var(--text);font-family:var(--mono);font-size:.75rem;text-align:right"></td><td id="rentCalc_${i}" style="font-family:var(--mono);font-size:.75rem;white-space:nowrap">—</td><td style="text-align:center"><input type="checkbox" id="planted_${i}" ${savedPlanted?'checked':''} onchange="sessionStorage.setItem('albion_planted_${i}',this.checked?'1':'0')" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" title="Đã trồng lại"></td>`;
 container.appendChild(tr);
 });
-// Seed row
-const savedSeed=parseInt(sessionStorage.getItem('albion_entry_seed'))||0;
-const seedTr=document.createElement('tr');
-seedTr.style.cssText='border-top:2px solid var(--border)';
-seedTr.innerHTML=`<td></td><td colspan="4"><strong>🌱 Giá hạt giống</strong> <span style="color:var(--text-dim);font-weight:400">· ${totalFarms} ruộng · ${fmt(totalPlots)} ô</span></td><td></td><td><input type="number" id="entry_seed" value="${savedSeed}" min="0" placeholder="Giá/hạt" onchange="updateDailyTotal()" style="width:110px;padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid rgba(248,113,113,.3);color:var(--text);font-family:var(--mono);font-size:.8rem;text-align:right"></td><td></td>`;
-container.appendChild(seedTr);
 entrySortable=new Sortable(container,{handle:'.drag-handle',animation:200,easing:'cubic-bezier(.4,0,.2,1)',ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',fallbackClass:'sortable-fallback',forceFallback:false,delay:0,delayOnTouchOnly:true,touchStartThreshold:3,
 filter:'input',preventOnFilter:false,
 onEnd(evt){if(evt.oldIndex===evt.newIndex)return;
-// Lưu values theo thứ tự cũ trước khi reorder
+// Lưu values + seed theo thứ tự cũ trước khi reorder
 const vals=islands.map((_,i)=>{const inp=document.getElementById(`entry_${i}`);return inp?parseInt(inp.value)||0:0});
+const seeds=islands.map((_,i)=>{const inp=document.getElementById(`seed_${i}`);return inp?parseInt(inp.value)||0:0});
+const planted=islands.map((_,i)=>sessionStorage.getItem(`albion_planted_${i}`)==='1'?'1':'0');
 const movedVal=vals.splice(evt.oldIndex,1)[0];vals.splice(evt.newIndex,0,movedVal);
+const movedSeed=seeds.splice(evt.oldIndex,1)[0];seeds.splice(evt.newIndex,0,movedSeed);
+const movedP=planted.splice(evt.oldIndex,1)[0];planted.splice(evt.newIndex,0,movedP);
 const item=islands.splice(evt.oldIndex,1)[0];islands.splice(evt.newIndex,0,item);saveIslands();
-// Ghi lại sessionStorage theo index mới
 vals.forEach((v,i)=>sessionStorage.setItem(`albion_entry_${i}`,v));
+seeds.forEach((v,i)=>sessionStorage.setItem(`albion_seed_${i}`,v));
+planted.forEach((v,i)=>sessionStorage.setItem(`albion_planted_${i}`,v));
 const rows=container.querySelectorAll('.entry-row');if(rows[evt.newIndex]){rows[evt.newIndex].classList.add('drop-flash');setTimeout(()=>rows[evt.newIndex].classList.remove('drop-flash'),400)}
 showToast('✔ Đã lưu thứ tự','info');renderIslands();recalcAll();rerenderEntryRows();updateDailyTotal()}});
 const cnt=document.getElementById('entryCount');
@@ -248,29 +303,34 @@ if(cnt)cnt.textContent=`${shown}/${islands.length}`;
 
 // Lưu tạm entry vào sessionStorage
 function getDailyEntryVal(i){return parseInt(sessionStorage.getItem(`albion_entry_${i}`))||0}
+// Seed per island: lấy từ session hoặc auto-fill từ prices
+function getEntrySeedVal(i,cropId){
+const s=sessionStorage.getItem(`albion_seed_${i}`);
+if(s!==null)return parseInt(s)||0;
+return prices[cropId]?prices[cropId].seed:0;
+}
 function updateDailyTotal(){
-let income=0,totalRent=0;
+let income=0,seedCost=0,totalRent=0;
 islands.forEach((isl,i)=>{
 const inp=document.getElementById(`entry_${i}`);
 const v=inp?parseInt(inp.value)||0:0;
 sessionStorage.setItem(`albion_entry_${i}`,v);
+const seedInp=document.getElementById(`seed_${i}`);
+const sp=seedInp?parseInt(seedInp.value)||0:0;
+sessionStorage.setItem(`albion_seed_${i}`,sp);
 income+=v;
-});
-const seedInp=document.getElementById('entry_seed');
-const seedPrice=seedInp?parseInt(seedInp.value)||0:0;
-sessionStorage.setItem('albion_entry_seed',seedPrice);
-const totalPlots=islands.reduce((s,isl)=>s+isl.farms*9,0);
-const seedCost=totalPlots*seedPrice;
-// Rent: tính trên thu nhập ròng từng đảo (income - seed share)
-islands.forEach((isl,i)=>{
+const islPlots=isl.farms*9;
+const islSeed=islPlots*sp;
+seedCost+=islSeed;
+// Rent
 const rentCell=document.getElementById(`rentCalc_${i}`);
+// Dim row nếu cả income và seed đều = 0
+const row=inp?inp.closest('tr'):null;
+if(row)row.style.opacity=(v===0&&sp===0)?'.45':'1';
 if(!isl.rent){
 if(rentCell)rentCell.innerHTML='<span style="color:var(--text-dim)">—</span>';
 return;
 }
-const v=document.getElementById(`entry_${i}`)?parseInt(document.getElementById(`entry_${i}`).value)||0:0;
-const islPlots=isl.farms*9;
-const islSeed=islPlots*seedPrice;
 const islNet=v-islSeed;
 if(islNet>0){
 const rc=Math.round(islNet*isl.rent/100);
@@ -291,30 +351,33 @@ el.innerHTML=parts;}
 function saveDailyEntry(){
 if(!islands.length){showToast('Chưa có đảo','error');return}
 const targetDate=editingDate||new Date().toISOString().slice(0,10);
-const details=[];let income=0,totalRent=0;
+const details=[];let income=0,seedCost=0,totalRent=0;
 islands.forEach((isl,i)=>{
 const inp=document.getElementById(`entry_${i}`);
 const v=inp?parseInt(inp.value)||0:0;
+const seedInp=document.getElementById(`seed_${i}`);
+const sp=seedInp?parseInt(seedInp.value)||0:0;
 const c=CROPS.find(x=>x.id===isl.crop);
-details.push({name:isl.name,city:isl.city,crop:c.tier+' '+c.name,emoji:c.emoji,farms:isl.farms,income:v,rent:isl.rent||0});
+const islPlots=isl.farms*9;
+const islSeed=islPlots*sp;
+seedCost+=islSeed;
+const plantedCb=document.getElementById(`planted_${i}`);
+const isPlanted=plantedCb?plantedCb.checked:false;
+details.push({name:isl.name,city:isl.city,crop:c.tier+' '+c.name,emoji:c.emoji,farms:isl.farms,income:v,rent:isl.rent||0,seedPrice:sp,seedCost:islSeed,planted:isPlanted});
 income+=v;
 });
-const seedInp=document.getElementById('entry_seed');
-const seedPrice=seedInp?parseInt(seedInp.value)||0:0;
 const totalPlots=islands.reduce((s,isl)=>s+isl.farms*9,0);
-const seedCost=totalPlots*seedPrice;
 // Rent per island
 details.forEach((d,i)=>{
 if(!d.rent)return;
-const islSeed=islands[i].farms*9*seedPrice;
-const islNet=d.income-islSeed;
+const islNet=d.income-d.seedCost;
 const rc=islNet>0?Math.round(islNet*d.rent/100):0;
 d.rentCost=rc;totalRent+=rc;
 });
 const netProfit=income-seedCost-totalRent;
 if(income===0&&seedCost===0){showToast('Nhập ít nhất 1 đảo có thu nhập','error');return}
 const h=getHistory();
-const entry={date:targetDate,profit:netProfit,income,seedPrice,seedCost,totalPlots,totalRent,details};
+const entry={date:targetDate,profit:netProfit,income,seedCost,totalPlots,totalRent,details};
 const existing=h.findIndex(x=>x.date===targetDate);
 if(existing>=0){
 if(!editingDate&&!confirm(`Đã có dữ liệu ngày ${targetDate}. Ghi đè?`))return;
@@ -323,8 +386,7 @@ h[existing]=entry;
 h.push(entry);h.sort((a,b)=>a.date.localeCompare(b.date));
 }
 saveHistory(h);editingDate=null;
-islands.forEach((isl,i)=>sessionStorage.removeItem(`albion_entry_${i}`));
-sessionStorage.removeItem('albion_entry_seed');
+islands.forEach((isl,i)=>{sessionStorage.removeItem(`albion_entry_${i}`);sessionStorage.removeItem(`albion_seed_${i}`);sessionStorage.removeItem(`albion_planted_${i}`)});
 renderHistory();
 showToast(`💾 ${fmtC(netProfit)} silver → ${targetDate}`,'success');
 recalcAll();
@@ -333,8 +395,16 @@ recalcAll();
 function editHistoryEntry(idx){
 const h=getHistory();if(idx<0||idx>=h.length)return;
 const r=h[idx];editingDate=r.date;
-if(r.details)r.details.forEach((d,i)=>{if(i<islands.length)sessionStorage.setItem(`albion_entry_${i}`,d.income||d.profit||0)});
-if(r.seedPrice)sessionStorage.setItem('albion_entry_seed',r.seedPrice);
+// Clear trước, đảo nào không có trong details sẽ = 0
+islands.forEach((isl,i)=>{sessionStorage.setItem(`albion_entry_${i}`,0);sessionStorage.setItem(`albion_seed_${i}`,0);sessionStorage.setItem(`albion_planted_${i}`,'0')});
+if(r.details)r.details.forEach(d=>{
+const i=islands.findIndex(isl=>isl.name===d.name&&isl.city===d.city);
+if(i>=0){
+sessionStorage.setItem(`albion_entry_${i}`,d.income||d.profit||0);
+sessionStorage.setItem(`albion_seed_${i}`,d.seedPrice||r.seedPrice||0);
+sessionStorage.setItem(`albion_planted_${i}`,d.planted?'1':'0');
+}
+});
 renderDailyEntryForm();
 document.getElementById('dailyEntryForm').scrollIntoView({behavior:'smooth',block:'center'});
 showToast(`✏️ Đang sửa ngày ${r.date}`,'info');
@@ -342,8 +412,7 @@ showToast(`✏️ Đang sửa ngày ${r.date}`,'info');
 
 function cancelEditHistory(){
 editingDate=null;
-islands.forEach((isl,i)=>sessionStorage.removeItem(`albion_entry_${i}`));
-sessionStorage.removeItem('albion_entry_seed');
+islands.forEach((isl,i)=>{sessionStorage.removeItem(`albion_entry_${i}`);sessionStorage.removeItem(`albion_seed_${i}`);sessionStorage.removeItem(`albion_planted_${i}`)});
 renderDailyEntryForm();
 showToast('Đã hủy chỉnh sửa','info');
 }
@@ -367,36 +436,74 @@ if(info)info.textContent=historyFilterDays?`Hiện ${fh.length}/${allH.length} n
 // Empty state
 if(!fh.length){if(emp)emp.style.display='block';if(tw)tw.style.display='none'}
 else{if(emp)emp.style.display='none';if(tw)tw.style.display='block'}
-let accum=0;
+// Tính tích lũy theo thứ tự thời gian (cũ → mới)
+const accumArr=[];let acc=0;
+fh.forEach(r=>{acc+=r.profit;accumArr.push(acc)});
 const mxProfit=fh.length?Math.max(...fh.map(r=>r.profit)):0;
-fh.forEach((r,idx)=>{
+// Hiển thị ngược: mới nhất lên trên
+for(let ri=fh.length-1;ri>=0;ri--){
+const r=fh[ri];
+const accum=accumArr[ri];
 const realIdx=allH.findIndex(x=>x.date===r.date);
-accum+=r.profit;
+const displayIdx=fh.length-1-ri;
 const hasDetails=r.details&&r.details.length>0;
 let detailHtml='';
 if(hasDetails){
-detailHtml=r.details.map(d=>{
+detailHtml=r.details.map((d,di)=>{
 const inc=d.income||d.profit||0;
-let line=`<div style="display:flex;align-items:center;gap:.4rem;padding:2px 0;font-size:.75rem"><span>${d.emoji}</span><strong style="min-width:60px">${d.name}</strong><span class="city-badge" data-city="${d.city}" style="font-size:.55rem;padding:0 4px">${d.city}</span><span style="color:var(--text-dim)">·${d.farms}F</span><span style="margin-left:auto;font-family:var(--mono);color:var(--green)">${fmtC(inc)}</span>`;
+const plantedIcon=d.planted?'<span style="color:var(--green);font-size:.7rem" title="Đã trồng lại">✅</span>':'<span style="color:var(--red);font-size:.7rem;opacity:.4" title="Chưa trồng lại">❌</span>';
+let line=`<div style="display:flex;align-items:center;gap:.4rem;padding:2px 0;font-size:.75rem">${plantedIcon}<span>${d.emoji}</span><strong style="min-width:60px">${d.name}</strong><span class="city-badge" data-city="${d.city}" style="font-size:.55rem;padding:0 4px">${d.city}</span><span style="color:var(--text-dim)">·${d.farms}F</span>`;
+if(d.seedPrice>0||d.seedCost>0)line+=`<span style="font-size:.6rem;color:var(--text-dim)" title="Seed: ${fmt(d.seedPrice||0)}/hạt">🌱${fmtC(d.seedCost||0)}</span>`;
+line+=`<span style="margin-left:auto;font-family:var(--mono);color:var(--green)">${fmtC(inc)}</span>`;
 if(d.rent>0&&d.rentCost>0)line+=`<span style="font-family:var(--mono);font-size:.7rem;color:var(--red)">-${fmtC(d.rentCost)}</span><span style="font-size:.55rem;background:rgba(248,113,113,.12);color:var(--red);padding:0 3px;border-radius:3px">${d.rent}%</span>`;
+line+=`<button class="btn btn-ghost" style="padding:0 4px;font-size:.6rem;color:var(--red);opacity:.5;margin-left:4px" onclick="removeHistoryDetail(${realIdx},${di})" title="Xóa đảo này khỏi ngày ${r.date}">✕</button>`;
 return line+'</div>';
 }).join('');
-if(r.seedCost){detailHtml+=`<div style="display:flex;align-items:center;gap:.4rem;padding:3px 0;margin-top:3px;border-top:1px solid var(--border);font-size:.75rem"><span>🌱</span><span style="color:var(--text-dim)">Seed</span><span style="margin-left:auto;font-family:var(--mono);color:var(--red)">-${fmtC(r.seedCost)}</span><span style="font-size:.6rem;color:var(--text-dim)">${fmt(r.totalPlots||0)} ô × ${fmt(r.seedPrice||0)}</span></div>`}
+const totalSeedCost=r.details.reduce((s,d)=>s+(d.seedCost||0),0);
+if(totalSeedCost>0){detailHtml+=`<div style="display:flex;align-items:center;gap:.4rem;padding:3px 0;margin-top:3px;border-top:1px solid var(--border);font-size:.75rem"><span>🌱</span><span style="color:var(--text-dim)">Seed</span><span style="margin-left:auto;font-family:var(--mono);color:var(--red)">-${fmtC(totalSeedCost)}</span></div>`}
+else if(r.seedCost){detailHtml+=`<div style="display:flex;align-items:center;gap:.4rem;padding:3px 0;margin-top:3px;border-top:1px solid var(--border);font-size:.75rem"><span>🌱</span><span style="color:var(--text-dim)">Seed</span><span style="margin-left:auto;font-family:var(--mono);color:var(--red)">-${fmtC(r.seedCost)}</span><span style="font-size:.6rem;color:var(--text-dim)">${fmt(r.totalPlots||0)} ô × ${fmt(r.seedPrice||0)}</span></div>`}
 if(r.totalRent>0){detailHtml+=`<div style="display:flex;align-items:center;gap:.4rem;padding:2px 0;font-size:.75rem"><span>🏠</span><span style="color:var(--text-dim)">Thuê</span><span style="margin-left:auto;font-family:var(--mono);color:var(--red)">-${fmtC(r.totalRent)}</span></div>`}
 }else{detailHtml='<span style="color:var(--text-dim);font-size:.7rem">Không có chi tiết</span>'}
 const tr=document.createElement('tr');
 if(r.profit===mxProfit&&mxProfit>0&&fh.length>1)tr.classList.add('row-highlight');
 const profitBadge=r.profit>=0?`<span style="font-family:var(--mono);font-weight:600;color:var(--green)">+${fmtC(r.profit)}</span>`:`<span style="font-family:var(--mono);font-weight:600;color:var(--red)">${fmtC(r.profit)}</span>`;
-tr.innerHTML=`<td><span class="city-badge" style="background:rgba(34,211,238,.1);color:var(--cyan);font-size:.7rem;padding:2px 6px">${r.date}</span></td><td><div id="detail_${idx}" style="display:none;padding:.4rem .5rem;margin-top:.3rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm)">${detailHtml}</div><button class="btn btn-ghost" style="padding:2px 6px;font-size:.65rem" onclick="toggleDetail(${idx})">${hasDetails?`📋 ${r.details.length} đảo`:'—'}</button></td><td>${profitBadge}</td><td style="font-family:var(--mono);font-size:.8rem;color:${accum>=0?'var(--accent)':'var(--red)'}">${fmtC(accum)}</td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:.65rem" onclick="editHistoryEntry(${realIdx})" title="Sửa">✎</button> <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:.65rem;color:var(--red)" onclick="deleteHistoryEntry(${realIdx})" title="Xoá">✕</button></td>`;
+tr.innerHTML=`<td><span class="city-badge" style="background:rgba(34,211,238,.1);color:var(--cyan);font-size:.7rem;padding:2px 6px">${r.date}</span></td><td><div id="detail_${displayIdx}" style="display:none;padding:.4rem .5rem;margin-top:.3rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm)">${detailHtml}</div><button class="btn btn-ghost" style="padding:2px 6px;font-size:.65rem" onclick="toggleDetail(${displayIdx})">${hasDetails?`📋 ${r.details.length} đảo`:'—'}</button></td><td>${profitBadge}</td><td style="font-family:var(--mono);font-size:.8rem;color:${accum>=0?'var(--accent)':'var(--red)'}">${fmtC(accum)}</td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:.65rem" onclick="editHistoryEntry(${realIdx})" title="Sửa">✎</button> <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:.65rem;color:var(--red)" onclick="deleteHistoryEntry(${realIdx})" title="Xoá">✕</button></td>`;
 tb.appendChild(tr);
-});
+};
 // Chart
 const cv=document.getElementById('historyChart');if(!cv)return;
+if(!fh.length){if(historyChart){historyChart.destroy();historyChart=null}return}
 if(historyChart){historyChart.data.labels=fh.map(r=>r.date);historyChart.data.datasets[0].data=fh.map(r=>r.profit);historyChart.update('none');return}
-if(!fh.length)return;
 historyChart=new Chart(cv,{type:'line',data:{labels:fh.map(r=>r.date),datasets:[{label:'Profit/ngày',data:fh.map(r=>r.profit),borderColor:'rgba(74,222,128,.8)',backgroundColor:'rgba(74,222,128,.1)',fill:true,tension:.3,pointRadius:4,pointBackgroundColor:'#4ade80'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(42,42,74,.4)'},ticks:{color:'#8888aa',font:{family:'JetBrains Mono',size:11},callback:v=>fmtC(v)}},x:{grid:{display:false},ticks:{color:'#8888aa',font:{family:'Inter',size:10}}}},animation:{duration:600}}})
 }
 function toggleDetail(idx){const el=document.getElementById(`detail_${idx}`);if(el)el.style.display=el.style.display==='none'?'block':'none'}
+
+function removeHistoryDetail(historyIdx,detailIdx){
+const h=getHistory();if(historyIdx<0||historyIdx>=h.length)return;
+const r=h[historyIdx];
+if(!r.details||detailIdx<0||detailIdx>=r.details.length)return;
+const d=r.details[detailIdx];
+if(!confirm(`Xóa ${d.name} (${d.city}) khỏi ngày ${r.date}?`))return;
+r.details.splice(detailIdx,1);
+// Nếu hết detail → xóa luôn entry
+if(!r.details.length){h.splice(historyIdx,1);saveHistory(h);renderHistory();showToast('🗑️ Đã xóa ngày '+r.date,'info');recalcAll();return}
+// Tính lại totals
+let income=0,seedCost=0,totalRent=0,totalPlots=0;
+r.details.forEach(dd=>{
+income+=(dd.income||dd.profit||0);
+seedCost+=(dd.seedCost||0);
+totalPlots+=(dd.farms||0)*9;
+if(dd.rent>0){
+const net=(dd.income||0)-(dd.seedCost||0);
+const rc=net>0?Math.round(net*dd.rent/100):0;
+dd.rentCost=rc;totalRent+=rc;
+}
+});
+r.income=income;r.seedCost=seedCost;r.totalPlots=totalPlots;r.totalRent=totalRent;
+r.profit=income-seedCost-totalRent;
+saveHistory(h);renderHistory();
+showToast(`✔ Đã xóa ${d.name} khỏi ${r.date}`,'info');recalcAll();
+}
 
 // === RENT REPORT ===
 function getRentPeriodHistory(){
@@ -450,7 +557,6 @@ const emp=document.getElementById('noRent'),tw=document.getElementById('rentTabl
 const info=document.getElementById('rentReportInfo');
 if(info)info.textContent=from&&to?`Kỳ: ${from} — ${to} · ${totalDays} ngày ghi`:'';
 // Chỉ hiện tenants có rent > 0 hoặc có data
-const hasPaying=tenants.some(t=>t.rentCost>0);
 if(!tenants.length){emp.style.display='block';tw.style.display='none';return}
 emp.style.display='none';tw.style.display='block';
 tb.innerHTML='';ft.innerHTML='';
@@ -500,5 +606,5 @@ function toggleTabMore(){const tabs=document.getElementById('tabBar'),btn=docume
 function switchTab(id,btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.getElementById(`tab-${id}`).classList.add('active');if(btn)btn.classList.add('active');
 // Collapse mobile dropdown khi chọn secondary tab
 const tabs=document.getElementById('tabBar');if(tabs)tabs.classList.remove('expanded');const mb=document.getElementById('tabMoreBtn');if(mb)mb.classList.remove('expanded');
-if(id==='chart')setTimeout(updateChart,100);if(id==='compare')runCompare();if(id==='spec')runSpec();if(id==='history')renderHistory()}
+if(id==='chart')setTimeout(updateChart,100);if(id==='compare')runCompare();if(id==='spec')runSpec();if(id==='islands')renderHistory()}
 document.addEventListener('DOMContentLoaded',init);

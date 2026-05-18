@@ -20,7 +20,7 @@
   --shadow: 0 2px 12px rgba(0,0,0,.08); --shadow-lg: 0 4px 24px rgba(0,0,0,.12);
   --header-bg: rgba(240,241,245,.92);
 }
-[data-theme="light"] .app-header h1 { -webkit-text-fill-color: var(--accent); background: none; }
+[data-theme="light"] .app-header h1 { -webkit-text-fill-color: var(--accent); color: var(--accent); background: none; }
 [data-theme="light"] .logo-icon { filter: drop-shadow(0 0 6px rgba(212,160,32,.4)); }
 
 /* === RESET === */
@@ -34,7 +34,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .logo-group{display:flex;align-items:center;gap:.75rem;flex-shrink:0}
 .logo-icon{font-size:2.2rem;animation:pulse-glow 2.5s ease-in-out infinite}
 @keyframes pulse-glow{0%,100%{filter:drop-shadow(0 0 8px rgba(240,192,64,.4));transform:scale(1)}50%{filter:drop-shadow(0 0 18px rgba(240,192,64,.9));transform:scale(1.05)}}
-.app-header h1{font-size:1.15rem;font-weight:800;background:linear-gradient(135deg,var(--accent),#ffe082,var(--accent));background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 3s linear infinite;letter-spacing:-.02em}
+.app-header h1{font-size:1.15rem;font-weight:800;background:linear-gradient(135deg,var(--accent),#ffe082,var(--accent));background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:shimmer 3s linear infinite;letter-spacing:-.02em}
 @keyframes shimmer{to{background-position:200% center}}
 .server-badge{display:inline-block;padding:.15rem .55rem;background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.3);border-radius:12px;font-size:.65rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 .header-profit{text-align:center;flex-shrink:0;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:var(--radius);padding:.4rem 1.5rem}

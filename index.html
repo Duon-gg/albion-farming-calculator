@@ -29,6 +29,8 @@
     <div class="header-actions">
       <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="themeBtn" title="Dark/Light mode">🌙</button>
       <button class="btn btn-ghost" onclick="exportResults()"><span class="btn-icon">📋</span> Export</button>
+      <button class="btn btn-ghost btn-sm" onclick="backupData()" title="Tải xuống backup dữ liệu">💾 Backup</button>
+      <label class="btn btn-ghost btn-sm" title="Khôi phục dữ liệu từ file backup" style="cursor:pointer">📂 Restore<input type="file" accept=".json" onchange="restoreData(event)" style="display:none"></label>
       <select id="apiServer" onchange="onServerChange()" title="Chọn API server" style="padding:.35rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer">
         <option value="east">🌏 Asia East</option>
         <option value="west">🌎 Americas West</option>
@@ -98,8 +100,7 @@
 
   <!-- TABS -->
   <div class="tabs" id="tabBar">
-    <button class="tab tab-primary active" onclick="switchTab('islands',this)">🏝️ Đảo</button>
-    <button class="tab tab-primary" onclick="switchTab('history',this)">📜 Lịch sử</button>
+    <button class="tab tab-primary active" onclick="switchTab('islands',this)">🏝️ Đảo & Thu nhập</button>
     <button class="tab tab-secondary" onclick="switchTab('prices',this)">💰 Bảng Giá</button>
     <button class="tab tab-secondary" onclick="switchTab('watering',this)">💧 Tưới cây</button>
     <button class="tab tab-secondary" onclick="switchTab('compare',this)">⚖️ So sánh</button>
@@ -142,6 +143,77 @@
           <th class="sortable" onclick="sortIslands('profit')">Profit⇅</th>
           <th></th>
         </tr></thead><tbody id="islandBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- FORM GHI THU NHẬP -->
+    <div class="card" style="margin-top:1rem">
+      <div class="section-header" style="margin-bottom:.5rem">
+        <h3 class="section-title" style="font-size:.85rem">📝 Ghi thu nhập hôm nay</h3>
+      </div>
+      <div id="dailyEntryForm"></div>
+      <div id="editingDateLabel" style="display:none;padding:.4rem .6rem;margin-top:.4rem;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:var(--radius-sm);font-size:.75rem;color:var(--accent)">
+        ✏️ Đang sửa ngày: <strong id="editingDateText"></strong>
+        <button class="btn btn-ghost" style="padding:1px 6px;font-size:.65rem;margin-left:.5rem" onclick="cancelEditHistory()">✕ Hủy</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--border)">
+        <div>
+          <span style="color:var(--text-dim);font-size:.75rem">Tổng: </span>
+          <strong id="dailyEntryTotal" style="font-family:var(--mono);color:var(--green);font-size:1.1rem">0</strong>
+        </div>
+        <button class="btn btn-accent btn-sm" id="btnSaveEntry" onclick="saveDailyEntry()">💾 Lưu ngày hôm nay</button>
+      </div>
+    </div>
+
+    <!-- LỊCH SỬ -->
+    <div class="card" style="margin-top:1rem">
+      <div class="section-header">
+        <h2 class="section-title">📜 Lịch sử Profit</h2>
+        <div style="display:flex;gap:.4rem">
+          <button class="btn btn-ghost btn-sm" onclick="clearHistory()">🗑️ Xoá tất cả</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap">
+        <span style="font-size:.75rem;color:var(--text-dim)">Lọc:</span>
+        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(7)" id="hf7">7 ngày</button>
+        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(30)" id="hf30">30 ngày</button>
+        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(0)" id="hf0">Tất cả</button>
+        <span style="font-size:.7rem;color:var(--text-dim);margin-left:auto" id="historyFilterInfo"></span>
+      </div>
+      <div class="chart-container"><canvas id="historyChart"></canvas></div>
+      <div id="noHistory" class="empty-state" style="display:none"><span>📜</span><p>Chưa có lịch sử nào.</p></div>
+      <div class="table-wrap" id="historyTableWrap" style="margin-top:1rem">
+        <table><thead><tr>
+          <th>Ngày</th><th>Chi tiết</th><th>Profit/ngày</th><th>Tích luỹ</th><th></th>
+        </tr></thead>
+        <tbody id="historyBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- BÁO CÁO TIỀN THUÊ -->
+    <div class="card" style="margin-top:1rem">
+      <div class="section-header">
+        <h2 class="section-title">💸 Báo cáo Tiền Thuê</h2>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          <select id="rentReportPeriod" onchange="renderRentReport()" style="padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem">
+            <option value="month">Tháng này</option>
+            <option value="30">30 ngày</option>
+            <option value="7">7 ngày</option>
+            <option value="0">Tất cả</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="copyRentReport()">📋 Copy</button>
+        </div>
+      </div>
+      <div id="rentReportInfo" style="font-size:.7rem;color:var(--text-dim);margin-bottom:.5rem"></div>
+      <div id="noRent" class="empty-state" style="display:none"><span>🏠</span><p>Không có dữ liệu thuê.</p></div>
+      <div class="table-wrap" id="rentTableWrap" style="display:none">
+        <table>
+          <thead><tr>
+            <th>Người thuê</th><th>Đảo</th><th>Ruộng</th><th>Doanh thu</th><th>Tiền thuê</th><th>%</th><th>TB/ngày</th>
+          </tr></thead>
+          <tbody id="rentBody"></tbody>
+          <tfoot id="rentFoot"></tfoot>
+        </table>
       </div>
     </div>
   </section>
@@ -194,85 +266,6 @@
         <div class="input-group"><label>Số ruộng tính</label><input type="number" id="specFarms" value="10" min="1" onchange="runSpec()"></div>
       </div>
       <div id="specResults" style="margin-top:1rem"></div>
-    </div>
-  </section>
-
-  <!-- TAB: HISTORY -->
-  <section class="tab-content" id="tab-history">
-    <div class="card">
-      <div class="section-header">
-        <h2 class="section-title">📜 Profit History</h2>
-        <div style="display:flex;gap:.4rem">
-          <button class="btn btn-ghost btn-sm" onclick="clearHistory()">🗑️ Xoá tất cả</button>
-        </div>
-      </div>
-
-      <!-- FORM GHI THU NHẬP -->
-      <div class="card" style="background:var(--bg);border:1px solid var(--border);margin-bottom:1rem">
-        <div class="section-header" style="margin-bottom:.5rem">
-          <h3 class="section-title" style="font-size:.85rem">📝 Ghi thu nhập hôm nay</h3>
-        </div>
-        <div id="dailyEntryForm"></div>
-        <div id="editingDateLabel" style="display:none;padding:.4rem .6rem;margin-top:.4rem;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:var(--radius-sm);font-size:.75rem;color:var(--accent)">
-          ✏️ Đang sửa ngày: <strong id="editingDateText"></strong>
-          <button class="btn btn-ghost" style="padding:1px 6px;font-size:.65rem;margin-left:.5rem" onclick="cancelEditHistory()">✕ Hủy</button>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--border)">
-          <div>
-            <span style="color:var(--text-dim);font-size:.75rem">Tổng: </span>
-            <strong id="dailyEntryTotal" style="font-family:var(--mono);color:var(--green);font-size:1.1rem">0</strong>
-          </div>
-          <button class="btn btn-accent btn-sm" id="btnSaveEntry" onclick="saveDailyEntry()">💾 Lưu ngày hôm nay</button>
-        </div>
-      </div>
-
-      <!-- BỘ LỌC -->
-      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap">
-        <span style="font-size:.75rem;color:var(--text-dim)">Lọc:</span>
-        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(7)" id="hf7">7 ngày</button>
-        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(30)" id="hf30">30 ngày</button>
-        <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(0)" id="hf0">Tất cả</button>
-        <span style="font-size:.7rem;color:var(--text-dim);margin-left:auto" id="historyFilterInfo"></span>
-      </div>
-
-      <!-- CHART -->
-      <div class="chart-container"><canvas id="historyChart"></canvas></div>
-
-      <!-- BẢNG LỊCH SỬ -->
-      <div id="noHistory" class="empty-state" style="display:none"><span>📜</span><p>Chưa có lịch sử nào.</p></div>
-      <div class="table-wrap" id="historyTableWrap" style="margin-top:1rem">
-        <table><thead><tr>
-          <th>Ngày</th><th>Chi tiết</th><th>Profit/ngày</th><th>Tích luỹ</th><th></th>
-        </tr></thead>
-        <tbody id="historyBody"></tbody></table>
-      </div>
-
-      <!-- BÁO CÁO TIỀN THUÊ -->
-      <div class="card" style="margin-top:1.5rem">
-        <div class="section-header">
-          <h2 class="section-title">💸 Báo cáo Tiền Thuê</h2>
-          <div style="display:flex;gap:.4rem;align-items:center">
-            <select id="rentReportPeriod" onchange="renderRentReport()" style="padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem">
-              <option value="month">Tháng này</option>
-              <option value="30">30 ngày</option>
-              <option value="7">7 ngày</option>
-              <option value="0">Tất cả</option>
-            </select>
-            <button class="btn btn-ghost btn-sm" onclick="copyRentReport()">📋 Copy</button>
-          </div>
-        </div>
-        <div id="rentReportInfo" style="font-size:.7rem;color:var(--text-dim);margin-bottom:.5rem"></div>
-        <div id="noRent" class="empty-state" style="display:none"><span>🏠</span><p>Không có dữ liệu thuê.</p></div>
-        <div class="table-wrap" id="rentTableWrap" style="display:none">
-          <table>
-            <thead><tr>
-              <th>Người thuê</th><th>Đảo</th><th>Ruộng</th><th>Doanh thu</th><th>Tiền thuê</th><th>%</th><th>TB/ngày</th>
-            </tr></thead>
-            <tbody id="rentBody"></tbody>
-            <tfoot id="rentFoot"></tfoot>
-          </table>
-        </div>
-      </div>
     </div>
   </section>
 

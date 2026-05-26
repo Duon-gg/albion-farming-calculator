@@ -30,17 +30,17 @@
       <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="themeBtn" title="Dark/Light mode">🌙</button>
       <button class="btn btn-ghost" onclick="exportResults()"><span class="btn-icon">📋</span> Export</button>
       <button class="btn btn-ghost btn-sm" onclick="backupData()" title="Tải xuống backup dữ liệu">💾 Backup</button>
-      <label class="btn btn-ghost btn-sm" title="Khôi phục dữ liệu từ file backup" style="cursor:pointer">📂 Restore<input type="file" accept=".json" onchange="restoreData(event)" style="display:none"></label>
-      <select id="apiServer" onchange="onServerChange()" title="Chọn API server" style="padding:.35rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer">
+      <label class="btn btn-ghost btn-sm restore-label" title="Khôi phục dữ liệu từ file backup">📂 Restore<input type="file" accept=".json" onchange="restoreData(event)" class="restore-input"></label>
+      <select id="apiServer" onchange="onServerChange()" title="Chọn API server" class="header-select">
         <option value="east">🌏 Asia East</option>
         <option value="west">🌎 Americas West</option>
         <option value="europe">🌍 Europe</option>
       </select>
-      <select id="sellMode" onchange="onSellModeChange()" title="Kiểu bán" style="padding:.35rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer">
+      <select id="sellMode" onchange="onSellModeChange()" title="Kiểu bán" class="header-select">
         <option value="sell">📋 Sell Order</option>
         <option value="quick">💨 Quick Sell</option>
       </select>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:.2rem">
+      <div class="fetch-group">
         <button class="btn btn-accent" id="btnFetchPrices" onclick="fetchPrices()">
           <span class="btn-icon" id="fetchIcon">⟳</span>
           <span id="fetchText">Cập nhật giá</span>
@@ -64,7 +64,7 @@
       <div class="card-icon">💰</div>
       <div class="card-body"><div class="card-label">Ước tính DT/ngày</div><div class="card-value gold" id="totalRevenue">0</div><div class="card-sub">silver (theo bảng giá)</div></div>
     </div>
-    <div class="card summary-card" data-accent="green" style="border:1px solid rgba(74,222,128,.3)">
+    <div class="card summary-card summary-card-highlight" data-accent="green">
       <div class="card-icon">📊</div>
       <div class="card-body"><div class="card-label">Profit thực tế/ngày</div><div class="card-value green" id="avgDailyProfit">0</div><div class="card-sub" id="avgDailyProfitSub">từ lịch sử</div></div>
     </div>
@@ -84,7 +84,7 @@
     <div class="premium-grid">
       <div class="input-group"><label>Giá Premium</label><input type="number" id="premiumPrice" value="46000000" onchange="recalcAll()"></div>
       <div class="input-group"><label>Ngày còn lại</label><input type="number" id="premiumDays" value="27" onchange="recalcAll()"></div>
-      <div class="input-group" style="justify-content:center"><label style="cursor:pointer;display:flex;align-items:center;gap:.4rem"><input type="checkbox" id="hasPremium" checked onchange="recalcAll()" style="width:auto;accent-color:var(--accent)"> Có Premium</label></div>
+      <div class="input-group premium-checkbox-group"><label class="premium-checkbox-label"><input type="checkbox" id="hasPremium" checked onchange="recalcAll()" class="premium-checkbox"> Có Premium</label></div>
       <div class="premium-result"><div class="card-label">Ngày hoàn vốn</div><div class="card-value" id="roiDays">∞</div></div>
       <div class="premium-result"><div class="card-label">Trạng thái</div><div id="roiBadge" class="badge badge-red">—</div></div>
     </div>
@@ -147,42 +147,42 @@
     </div>
 
     <!-- FORM GHI THU NHẬP -->
-    <div class="card" style="margin-top:1rem">
-      <div class="section-header" style="margin-bottom:.5rem">
-        <h3 class="section-title" style="font-size:.85rem">📝 Ghi thu nhập hôm nay</h3>
+    <div class="card card-mt">
+      <div class="section-header section-header-mb">
+        <h3 class="section-title section-title-sm">📝 Ghi thu nhập hôm nay</h3>
       </div>
       <div id="dailyEntryForm"></div>
-      <div id="editingDateLabel" style="display:none;padding:.4rem .6rem;margin-top:.4rem;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:var(--radius-sm);font-size:.75rem;color:var(--accent)">
+      <div id="editingDateLabel" class="editing-date-label">
         ✏️ Đang sửa ngày: <strong id="editingDateText"></strong>
-        <button class="btn btn-ghost" style="padding:1px 6px;font-size:.65rem;margin-left:.5rem" onclick="cancelEditHistory()">✕ Hủy</button>
+        <button class="btn btn-ghost cancel-edit-btn" onclick="cancelEditHistory()">✕ Hủy</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--border)">
+      <div class="daily-entry-footer">
         <div>
-          <span style="color:var(--text-dim);font-size:.75rem">Tổng: </span>
-          <strong id="dailyEntryTotal" style="font-family:var(--mono);color:var(--green);font-size:1.1rem">0</strong>
+          <span class="daily-entry-total-label">Tổng: </span>
+          <strong id="dailyEntryTotal" class="daily-entry-total-value">0</strong>
         </div>
         <button class="btn btn-accent btn-sm" id="btnSaveEntry" onclick="saveDailyEntry()">💾 Lưu ngày hôm nay</button>
       </div>
     </div>
 
     <!-- LỊCH SỬ -->
-    <div class="card" style="margin-top:1rem">
+    <div class="card card-mt">
       <div class="section-header">
         <h2 class="section-title">📜 Lịch sử Profit</h2>
-        <div style="display:flex;gap:.4rem">
+        <div class="history-actions">
           <button class="btn btn-ghost btn-sm" onclick="clearHistory()">🗑️ Xoá tất cả</button>
         </div>
       </div>
-      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap">
-        <span style="font-size:.75rem;color:var(--text-dim)">Lọc:</span>
+      <div class="history-filter-bar">
+        <span class="history-filter-label">Lọc:</span>
         <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(7)" id="hf7">7 ngày</button>
         <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(30)" id="hf30">30 ngày</button>
         <button class="btn btn-ghost btn-sm" onclick="setHistoryFilter(0)" id="hf0">Tất cả</button>
-        <span style="font-size:.7rem;color:var(--text-dim);margin-left:auto" id="historyFilterInfo"></span>
+        <span class="history-filter-info" id="historyFilterInfo"></span>
       </div>
       <div class="chart-container"><canvas id="historyChart"></canvas></div>
-      <div id="noHistory" class="empty-state" style="display:none"><span>📜</span><p>Chưa có lịch sử nào.</p></div>
-      <div class="table-wrap" id="historyTableWrap" style="margin-top:1rem">
+      <div id="noHistory" class="empty-state"><span>📜</span><p>Chưa có lịch sử nào.</p></div>
+      <div class="table-wrap card-mt" id="historyTableWrap">
         <table><thead><tr>
           <th>Ngày</th><th>Chi tiết</th><th>Profit/ngày</th><th>Tích luỹ</th><th></th>
         </tr></thead>
@@ -191,11 +191,11 @@
     </div>
 
     <!-- BÁO CÁO TIỀN THUÊ -->
-    <div class="card" style="margin-top:1rem">
+    <div class="card card-mt">
       <div class="section-header">
         <h2 class="section-title">💸 Báo cáo Tiền Thuê</h2>
-        <div style="display:flex;gap:.4rem;align-items:center">
-          <select id="rentReportPeriod" onchange="renderRentReport()" style="padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem">
+        <div class="rent-report-actions">
+          <select id="rentReportPeriod" onchange="renderRentReport()" class="header-select" title="Chọn khoảng thời gian báo cáo thuê">
             <option value="month">Tháng này</option>
             <option value="30">30 ngày</option>
             <option value="7">7 ngày</option>
@@ -204,9 +204,9 @@
           <button class="btn btn-ghost btn-sm" onclick="copyRentReport()">📋 Copy</button>
         </div>
       </div>
-      <div id="rentReportInfo" style="font-size:.7rem;color:var(--text-dim);margin-bottom:.5rem"></div>
-      <div id="noRent" class="empty-state" style="display:none"><span>🏠</span><p>Không có dữ liệu thuê.</p></div>
-      <div class="table-wrap" id="rentTableWrap" style="display:none">
+      <div id="rentReportInfo" class="rent-report-info"></div>
+      <div id="noRent" class="empty-state"><span>🏠</span><p>Không có dữ liệu thuê.</p></div>
+      <div class="table-wrap" id="rentTableWrap">
         <table>
           <thead><tr>
             <th>Người thuê</th><th>Đảo</th><th>Ruộng</th><th>Doanh thu</th><th>Tiền thuê</th><th>%</th><th>TB/ngày</th>
@@ -250,9 +250,9 @@
   <section class="tab-content" id="tab-optimize">
     <div class="card">
       <h2 class="section-title">🧠 Tối ưu — Gợi ý cây tốt nhất cho từng đảo</h2>
-      <p class="text-dim" style="margin-bottom:1rem;font-size:.82rem">Dựa trên giá hiện tại, app sẽ gợi ý nên trồng cây gì ở mỗi đảo để maximize tổng profit.</p>
+      <p class="text-dim optimize-desc">Dựa trên giá hiện tại, app sẽ gợi ý nên trồng cây gì ở mỗi đảo để maximize tổng profit.</p>
       <button class="btn btn-accent" onclick="runOptimize()">🚀 Tối ưu hoá</button>
-      <div id="optimizeResults" style="margin-top:1rem"></div>
+      <div id="optimizeResults" class="optimize-results"></div>
     </div>
   </section>
 
@@ -265,7 +265,7 @@
         <div class="input-group"><label>LP Spec max</label><input type="number" id="specMax" value="125" min="0" max="125" onchange="runSpec()"></div>
         <div class="input-group"><label>Số ruộng tính</label><input type="number" id="specFarms" value="10" min="1" onchange="runSpec()"></div>
       </div>
-      <div id="specResults" style="margin-top:1rem"></div>
+      <div id="specResults" class="spec-results"></div>
     </div>
   </section>
 

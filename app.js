@@ -1,12 +1,12 @@
 const CROPS=[
-{id:'carrot',name:'Carrot',tier:'T1',apiItem:'T1_CARROT',apiSeed:'T1_CARROT_SEED',yield:9,lp:134,waterBonus:2,emoji:'🥕'},
-{id:'bean',name:'Bean',tier:'T2',apiItem:'T2_BEAN',apiSeed:'T2_BEAN_SEED',yield:9,lp:179,waterBonus:2,emoji:'🫘'},
-{id:'wheat',name:'Wheat',tier:'T3',apiItem:'T3_WHEAT',apiSeed:'T3_WHEAT_SEED',yield:9,lp:179,waterBonus:2,emoji:'🌾'},
-{id:'turnip',name:'Turnip',tier:'T4',apiItem:'T4_TURNIP',apiSeed:'T4_TURNIP_SEED',yield:9,lp:179,waterBonus:2,emoji:'🫛'},
-{id:'cabbage',name:'Cabbage',tier:'T5',apiItem:'T5_CABBAGE',apiSeed:'T5_CABBAGE_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥬'},
-{id:'potato',name:'Potato',tier:'T6',apiItem:'T6_POTATO',apiSeed:'T6_POTATO_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥔'},
-{id:'corn',name:'Corn',tier:'T7',apiItem:'T7_CORN',apiSeed:'T7_CORN_SEED',yield:9,lp:179,waterBonus:2,emoji:'🌽'},
-{id:'pumpkin',name:'Pumpkin',tier:'T8',apiItem:'T8_PUMPKIN',apiSeed:'T8_PUMPKIN_SEED',yield:10,lp:142,waterBonus:0.1333,emoji:'🎃'}];
+{id:'carrot',name:'Carrot',tier:'T1',apiItem:'T1_CARROT',apiSeed:'T1_CARROT_SEED',yield:9,lp:134,waterBonus:2,emoji:'🥕',defaultSeed:2308},
+{id:'bean',name:'Bean',tier:'T2',apiItem:'T2_BEAN',apiSeed:'T2_BEAN_SEED',yield:9,lp:179,waterBonus:2,emoji:'🫘',defaultSeed:3462},
+{id:'wheat',name:'Wheat',tier:'T3',apiItem:'T3_WHEAT',apiSeed:'T3_WHEAT_SEED',yield:9,lp:179,waterBonus:2,emoji:'🌾',defaultSeed:5770},
+{id:'turnip',name:'Turnip',tier:'T4',apiItem:'T4_TURNIP',apiSeed:'T4_TURNIP_SEED',yield:9,lp:179,waterBonus:2,emoji:'🫛',defaultSeed:8655},
+{id:'cabbage',name:'Cabbage',tier:'T5',apiItem:'T5_CABBAGE',apiSeed:'T5_CABBAGE_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥬',defaultSeed:11540},
+{id:'potato',name:'Potato',tier:'T6',apiItem:'T6_POTATO',apiSeed:'T6_POTATO_SEED',yield:9,lp:179,waterBonus:2,emoji:'🥔',defaultSeed:17310},
+{id:'corn',name:'Corn',tier:'T7',apiItem:'T7_CORN',apiSeed:'T7_CORN_SEED',yield:9,lp:179,waterBonus:2,emoji:'🌽',defaultSeed:25965},
+{id:'pumpkin',name:'Pumpkin',tier:'T8',apiItem:'T8_PUMPKIN',apiSeed:'T8_PUMPKIN_SEED',yield:10,lp:142,waterBonus:0.1333,emoji:'🎃',defaultSeed:34620}];
 const CITIES=['Martlock','Lymhurst','Bridgewatch','Fort Sterling','Thetford','Caerleon'];
 // API dùng underscore cho Fort_Sterling
 const API_CITIES=['Martlock','Lymhurst','Bridgewatch','Fort_Sterling','Thetford','Caerleon'];
@@ -253,6 +253,36 @@ updateDailyTotal();
 }
 
 let entrySortable=null;
+// Lấy crop override cho entry (session) hoặc fallback về island crop
+function getEntryCrop(i,islCrop){
+const s=sessionStorage.getItem(`albion_entry_crop_${i}`);
+return s||islCrop;
+}
+// Lấy farms override cho entry (session) hoặc fallback về island farms
+function getEntryFarms(i,islFarms){
+const s=sessionStorage.getItem(`albion_entry_farms_${i}`);
+return s!==null?parseInt(s)||0:islFarms;
+}
+// Khi đổi crop dropdown → auto-fill giá hạt tương ứng
+function onEntryCropChange(i){
+const sel=document.getElementById(`entry_crop_${i}`);
+if(!sel)return;
+const cropId=sel.value;
+sessionStorage.setItem(`albion_entry_crop_${i}`,cropId);
+const crop=CROPS.find(x=>x.id===cropId);
+const seedPrice=prices[cropId]?.seed||crop?.defaultSeed||0;
+const seedInp=document.getElementById(`seed_${i}`);
+if(seedInp)seedInp.value=seedPrice;
+sessionStorage.setItem(`albion_seed_${i}`,seedPrice);
+updateDailyTotal();
+}
+// Khi đổi farms input
+function onEntryFarmsChange(i){
+const inp=document.getElementById(`entry_farms_${i}`);
+if(!inp)return;
+sessionStorage.setItem(`albion_entry_farms_${i}`,inp.value);
+updateDailyTotal();
+}
 function rerenderEntryRows(){
 const container=document.getElementById('entryRows');if(!container)return;
 if(entrySortable){entrySortable.destroy();entrySortable=null}
@@ -262,9 +292,11 @@ container.innerHTML='';
 const totalFarms=islands.reduce((s,isl)=>s+isl.farms,0);
 const totalPlots=islands.reduce((s,isl)=>s+isl.farms*9,0);
 islands.forEach((isl,i)=>{
-const c=CROPS.find(x=>x.id===isl.crop);
+const entryCropId=getEntryCrop(i,isl.crop);
+const c=CROPS.find(x=>x.id===entryCropId);
+const entryFarms=getEntryFarms(i,isl.farms);
 const savedVal=getDailyEntryVal(i);
-const savedSeed=getEntrySeedVal(i,isl.crop);
+const savedSeed=getEntrySeedVal(i,entryCropId);
 const savedPlanted=sessionStorage.getItem(`albion_planted_${i}`)==='1';
 const matchName=!ft||isl.name.toLowerCase().includes(ft)||isl.city.toLowerCase().includes(ft);
 const matchCity=!entryFilterCity||isl.city===entryFilterCity;
@@ -278,22 +310,30 @@ if(!visible)tr.style.display='none';
 tr.dataset.idx=i;
 const dimRow=savedVal===0&&savedSeed===0;
 if(dimRow)tr.style.opacity='.45';
-tr.innerHTML=`<td class="drag-handle">☰</td><td><strong>${isl.name}</strong></td><td><span class="city-badge" data-city="${isl.city}">${isl.city}</span></td><td>${c.emoji}${c.tier}</td><td>${isl.farms} <span style="font-size:.6rem;color:var(--text-dim)">(${isl.farms*9} ô)</span></td><td>${rentTd}</td><td><input type="number" id="entry_${i}" value="${savedVal}" min="0" placeholder="0" onchange="updateDailyTotal()" style="width:110px;padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.8rem;text-align:right"></td><td><input type="number" id="seed_${i}" value="${savedSeed}" min="0" placeholder="0" onchange="updateDailyTotal()" style="width:80px;padding:.3rem .4rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid rgba(248,113,113,.2);color:var(--text);font-family:var(--mono);font-size:.75rem;text-align:right"></td><td id="rentCalc_${i}" style="font-family:var(--mono);font-size:.75rem;white-space:nowrap">—</td><td style="text-align:center"><input type="checkbox" id="planted_${i}" ${savedPlanted?'checked':''} onchange="sessionStorage.setItem('albion_planted_${i}',this.checked?'1':'0')" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" title="Đã trồng lại"></td>`;
+// Crop dropdown
+const cropOptions=CROPS.map(cr=>`<option value="${cr.id}" ${cr.id===entryCropId?'selected':''}>${cr.emoji} ${cr.tier}</option>`).join('');
+tr.innerHTML=`<td class="drag-handle">☰</td><td><strong>${isl.name}</strong></td><td><span class="city-badge" data-city="${isl.city}">${isl.city}</span></td><td><select id="entry_crop_${i}" onchange="onEntryCropChange(${i})" style="padding:.2rem .3rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-size:.7rem;cursor:pointer">${cropOptions}</select></td><td><input type="number" id="entry_farms_${i}" value="${entryFarms}" min="0" max="50" onchange="onEntryFarmsChange(${i})" style="width:50px;padding:.2rem .3rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.75rem;text-align:center"> <span style="font-size:.6rem;color:var(--text-dim)">(${entryFarms*9} ô)</span></td><td>${rentTd}</td><td><input type="number" id="entry_${i}" value="${savedVal}" min="0" placeholder="0" onchange="updateDailyTotal()" style="width:110px;padding:.3rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.8rem;text-align:right"></td><td><input type="number" id="seed_${i}" value="${savedSeed}" min="0" placeholder="0" onchange="updateDailyTotal()" style="width:80px;padding:.3rem .4rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid rgba(248,113,113,.2);color:var(--text);font-family:var(--mono);font-size:.75rem;text-align:right"></td><td id="rentCalc_${i}" style="font-family:var(--mono);font-size:.75rem;white-space:nowrap">—</td><td style="text-align:center"><input type="checkbox" id="planted_${i}" ${savedPlanted?'checked':''} onchange="sessionStorage.setItem('albion_planted_${i}',this.checked?'1':'0')" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" title="Đã trồng lại"></td>`;
 container.appendChild(tr);
 });
 entrySortable=new Sortable(container,{handle:'.drag-handle',animation:200,easing:'cubic-bezier(.4,0,.2,1)',ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',fallbackClass:'sortable-fallback',forceFallback:false,delay:0,delayOnTouchOnly:true,touchStartThreshold:3,
-filter:'input',preventOnFilter:false,
+filter:'input,select',preventOnFilter:false,
 onEnd(evt){if(evt.oldIndex===evt.newIndex)return;
-// Lưu values + seed theo thứ tự cũ trước khi reorder
+// Lưu values + seed + crop + farms theo thứ tự cũ trước khi reorder
 const vals=islands.map((_,i)=>{const inp=document.getElementById(`entry_${i}`);return inp?parseInt(inp.value)||0:0});
 const seeds=islands.map((_,i)=>{const inp=document.getElementById(`seed_${i}`);return inp?parseInt(inp.value)||0:0});
+const crops=islands.map((_,i)=>{const sel=document.getElementById(`entry_crop_${i}`);return sel?sel.value:islands[i].crop});
+const farms=islands.map((_,i)=>{const inp=document.getElementById(`entry_farms_${i}`);return inp?parseInt(inp.value)||0:islands[i].farms});
 const planted=islands.map((_,i)=>sessionStorage.getItem(`albion_planted_${i}`)==='1'?'1':'0');
 const movedVal=vals.splice(evt.oldIndex,1)[0];vals.splice(evt.newIndex,0,movedVal);
 const movedSeed=seeds.splice(evt.oldIndex,1)[0];seeds.splice(evt.newIndex,0,movedSeed);
+const movedCrop=crops.splice(evt.oldIndex,1)[0];crops.splice(evt.newIndex,0,movedCrop);
+const movedFarms=farms.splice(evt.oldIndex,1)[0];farms.splice(evt.newIndex,0,movedFarms);
 const movedP=planted.splice(evt.oldIndex,1)[0];planted.splice(evt.newIndex,0,movedP);
 const item=islands.splice(evt.oldIndex,1)[0];islands.splice(evt.newIndex,0,item);saveIslands();
 vals.forEach((v,i)=>sessionStorage.setItem(`albion_entry_${i}`,v));
 seeds.forEach((v,i)=>sessionStorage.setItem(`albion_seed_${i}`,v));
+crops.forEach((v,i)=>sessionStorage.setItem(`albion_entry_crop_${i}`,v));
+farms.forEach((v,i)=>sessionStorage.setItem(`albion_entry_farms_${i}`,v));
 planted.forEach((v,i)=>sessionStorage.setItem(`albion_planted_${i}`,v));
 const rows=container.querySelectorAll('.entry-row');if(rows[evt.newIndex]){rows[evt.newIndex].classList.add('drop-flash');setTimeout(()=>rows[evt.newIndex].classList.remove('drop-flash'),400)}
 showToast('✔ Đã lưu thứ tự','info');renderIslands();recalcAll();rerenderEntryRows();updateDailyTotal()}});
@@ -303,11 +343,14 @@ if(cnt)cnt.textContent=`${shown}/${islands.length}`;
 
 // Lưu tạm entry vào sessionStorage
 function getDailyEntryVal(i){return parseInt(sessionStorage.getItem(`albion_entry_${i}`))||0}
-// Seed per island: lấy từ session hoặc auto-fill từ prices
+// Seed per island: lấy từ session hoặc auto-fill từ prices/defaultSeed
 function getEntrySeedVal(i,cropId){
 const s=sessionStorage.getItem(`albion_seed_${i}`);
 if(s!==null)return parseInt(s)||0;
-return prices[cropId]?prices[cropId].seed:0;
+const p=prices[cropId];
+if(p&&p.seed>0)return p.seed;
+const crop=CROPS.find(x=>x.id===cropId);
+return crop?crop.defaultSeed:0;
 }
 function updateDailyTotal(){
 let income=0,seedCost=0,totalRent=0;
@@ -319,7 +362,10 @@ const seedInp=document.getElementById(`seed_${i}`);
 const sp=seedInp?parseInt(seedInp.value)||0:0;
 sessionStorage.setItem(`albion_seed_${i}`,sp);
 income+=v;
-const islPlots=isl.farms*9;
+// Dùng farms từ entry form (có thể override)
+const farmsInp=document.getElementById(`entry_farms_${i}`);
+const entryFarms=farmsInp?parseInt(farmsInp.value)||0:isl.farms;
+const islPlots=entryFarms*9;
 const islSeed=islPlots*sp;
 seedCost+=islSeed;
 // Rent
@@ -357,16 +403,21 @@ const inp=document.getElementById(`entry_${i}`);
 const v=inp?parseInt(inp.value)||0:0;
 const seedInp=document.getElementById(`seed_${i}`);
 const sp=seedInp?parseInt(seedInp.value)||0:0;
-const c=CROPS.find(x=>x.id===isl.crop);
-const islPlots=isl.farms*9;
+// Lấy crop + farms từ entry form (có thể override)
+const cropSel=document.getElementById(`entry_crop_${i}`);
+const entryCropId=cropSel?cropSel.value:isl.crop;
+const c=CROPS.find(x=>x.id===entryCropId);
+const farmsInp=document.getElementById(`entry_farms_${i}`);
+const entryFarms=farmsInp?parseInt(farmsInp.value)||0:isl.farms;
+const islPlots=entryFarms*9;
 const islSeed=islPlots*sp;
 seedCost+=islSeed;
 const plantedCb=document.getElementById(`planted_${i}`);
 const isPlanted=plantedCb?plantedCb.checked:false;
-details.push({name:isl.name,city:isl.city,crop:c.tier+' '+c.name,emoji:c.emoji,farms:isl.farms,income:v,rent:isl.rent||0,seedPrice:sp,seedCost:islSeed,planted:isPlanted});
+details.push({name:isl.name,city:isl.city,crop:c.tier+' '+c.name,cropId:entryCropId,emoji:c.emoji,farms:entryFarms,income:v,rent:isl.rent||0,seedPrice:sp,seedCost:islSeed,planted:isPlanted});
 income+=v;
 });
-const totalPlots=islands.reduce((s,isl)=>s+isl.farms*9,0);
+const totalPlots=details.reduce((s,d)=>s+d.farms*9,0);
 // Rent per island
 details.forEach((d,i)=>{
 if(!d.rent)return;
@@ -386,7 +437,7 @@ h[existing]=entry;
 h.push(entry);h.sort((a,b)=>a.date.localeCompare(b.date));
 }
 saveHistory(h);editingDate=null;
-islands.forEach((isl,i)=>{sessionStorage.removeItem(`albion_entry_${i}`);sessionStorage.removeItem(`albion_seed_${i}`);sessionStorage.removeItem(`albion_planted_${i}`)});
+islands.forEach((isl,i)=>{sessionStorage.removeItem(`albion_entry_${i}`);sessionStorage.removeItem(`albion_seed_${i}`);sessionStorage.removeItem(`albion_planted_${i}`);sessionStorage.removeItem(`albion_entry_crop_${i}`);sessionStorage.removeItem(`albion_entry_farms_${i}`)});
 renderHistory();
 showToast(`💾 ${fmtC(netProfit)} silver → ${targetDate}`,'success');
 recalcAll();
@@ -396,13 +447,16 @@ function editHistoryEntry(idx){
 const h=getHistory();if(idx<0||idx>=h.length)return;
 const r=h[idx];editingDate=r.date;
 // Clear trước, đảo nào không có trong details sẽ = 0
-islands.forEach((isl,i)=>{sessionStorage.setItem(`albion_entry_${i}`,0);sessionStorage.setItem(`albion_seed_${i}`,0);sessionStorage.setItem(`albion_planted_${i}`,'0')});
+islands.forEach((isl,i)=>{sessionStorage.setItem(`albion_entry_${i}`,0);sessionStorage.setItem(`albion_seed_${i}`,0);sessionStorage.setItem(`albion_planted_${i}`,'0');sessionStorage.removeItem(`albion_entry_crop_${i}`);sessionStorage.removeItem(`albion_entry_farms_${i}`)});
 if(r.details)r.details.forEach(d=>{
 const i=islands.findIndex(isl=>isl.name===d.name&&isl.city===d.city);
 if(i>=0){
 sessionStorage.setItem(`albion_entry_${i}`,d.income||d.profit||0);
 sessionStorage.setItem(`albion_seed_${i}`,d.seedPrice||r.seedPrice||0);
 sessionStorage.setItem(`albion_planted_${i}`,d.planted?'1':'0');
+// Khôi phục crop + farms từ history detail
+if(d.cropId)sessionStorage.setItem(`albion_entry_crop_${i}`,d.cropId);
+if(d.farms)sessionStorage.setItem(`albion_entry_farms_${i}`,d.farms);
 }
 });
 renderDailyEntryForm();
@@ -412,7 +466,7 @@ showToast(`✏️ Đang sửa ngày ${r.date}`,'info');
 
 function cancelEditHistory(){
 editingDate=null;
-islands.forEach((isl,i)=>{sessionStorage.removeItem(`albion_entry_${i}`);sessionStorage.removeItem(`albion_seed_${i}`);sessionStorage.removeItem(`albion_planted_${i}`)});
+islands.forEach((isl,i)=>{sessionStorage.removeItem(`albion_entry_${i}`);sessionStorage.removeItem(`albion_seed_${i}`);sessionStorage.removeItem(`albion_planted_${i}`);sessionStorage.removeItem(`albion_entry_crop_${i}`);sessionStorage.removeItem(`albion_entry_farms_${i}`)});
 renderDailyEntryForm();
 showToast('Đã hủy chỉnh sửa','info');
 }

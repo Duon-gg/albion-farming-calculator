@@ -263,3 +263,45 @@ table select{width:130px;padding:.3rem .4rem;font-size:.76rem;background:var(--b
 
 /* Pulse cho placeholder */
 @keyframes dragPulse{0%,100%{opacity:.4}50%{opacity:.8}}
+
+/* === HEADER INLINE-STYLE REPLACEMENTS === */
+.restore-label{cursor:pointer}
+.restore-input{display:none}
+.header-select{padding:.35rem .5rem;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer}
+.fetch-group{display:flex;flex-direction:column;align-items:center;gap:.2rem}
+
+/* === SUMMARY INLINE-STYLE REPLACEMENTS === */
+.summary-card-highlight{border:1px solid rgba(74,222,128,.3)}
+
+/* === PREMIUM INLINE-STYLE REPLACEMENTS === */
+.premium-checkbox-group{justify-content:center}
+.premium-checkbox-label{cursor:pointer;display:flex;align-items:center;gap:.4rem}
+.premium-checkbox{width:auto;accent-color:var(--accent)}
+
+/* === ISLAND TAB INLINE-STYLE REPLACEMENTS === */
+.card-mt{margin-top:1rem}
+.section-header-mb{margin-bottom:.5rem}
+.section-title-sm{font-size:.85rem}
+.editing-date-label{display:none;padding:.4rem .6rem;margin-top:.4rem;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);border-radius:var(--radius-sm);font-size:.75rem;color:var(--accent)}
+.editing-date-label.visible{display:block}
+.cancel-edit-btn{padding:1px 6px;font-size:.65rem;margin-left:.5rem}
+.daily-entry-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--border)}
+.daily-entry-total-label{color:var(--text-dim);font-size:.75rem}
+.daily-entry-total-value{font-family:var(--mono);color:var(--green);font-size:1.1rem}
+
+/* === HISTORY INLINE-STYLE REPLACEMENTS === */
+.history-filter-bar{display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap}
+.history-filter-label{font-size:.75rem;color:var(--text-dim)}
+.history-filter-info{font-size:.7rem;color:var(--text-dim);margin-left:auto}
+.history-actions{display:flex;gap:.4rem}
+
+/* === RENT REPORT INLINE-STYLE REPLACEMENTS === */
+.rent-report-actions{display:flex;gap:.4rem;align-items:center}
+.rent-report-info{font-size:.7rem;color:var(--text-dim);margin-bottom:.5rem}
+
+/* === OPTIMIZE INLINE-STYLE REPLACEMENTS === */
+.optimize-desc{margin-bottom:1rem;font-size:.82rem}
+.optimize-results{margin-top:1rem}
+
+/* === SPEC INLINE-STYLE REPLACEMENTS === */
+.spec-results{margin-top:1rem}

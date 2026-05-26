@@ -1,0 +1,20 @@
+# OpenAlbion
+
+[Application
+
+                            
+                                The application has a user-friendly interface that allows users to browse the collected
+                                data.](https://play.google.com/store/apps/details?id=com.openalbion.weaponry)
+
+## Application
+The application has a user-friendly interface that allows users to browse the collected data.
+[Documentation
+
+                            
+                                OpenAlbion's API documentation covers every endpoint, making it easy for developers to
+                                use.](https://openalbion.com)
+
+## Documentation
+OpenAlbion's API documentation covers every endpoint, making it easy for developers to use.
+[Terms of Service](https://api.openalbion.com/terms-of-service)
+[Privacy Policy](https://api.openalbion.com/privacy-policy)
